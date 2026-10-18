@@ -14,7 +14,7 @@ export class GameOverScene extends Phaser.Scene {
     const g = this.add.graphics();
     drawPanel(g, 30, 130, GAME_WIDTH - 60, 430);
 
-    pixelText(this, cx, 175, 'YOU DIED', 38, '#b13e53');
+    pixelText(this, cx, 175, result.reason === 'camp' ? 'THE CAMP FELL' : 'YOU DIED', result.reason === 'camp' ? 30 : 38, '#b13e53');
     const time = `${Math.floor(result.seconds / 60)}:${String(result.seconds % 60).padStart(2, '0')}`;
     pixelText(this, cx, 240, `SURVIVED  ${time}`, 16);
     pixelText(this, cx, 265, `KILLS  ${result.kills}`, 16);

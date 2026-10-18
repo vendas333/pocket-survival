@@ -89,6 +89,9 @@ export const sfx = {
     [523, 659, 784, 1046].forEach((f, i) => tone({ freq: f, dur: 0.09, vol: 0.15, delay: i * 0.07 }));
   },
   click: () => tone({ freq: 600, dur: 0.04, vol: 0.1 }),
+  levelUp: () => {
+    [392, 523, 659, 784, 1046].forEach((f, i) => tone({ freq: f, dur: 0.12, type: 'triangle', vol: 0.18, delay: i * 0.06 }));
+  },
   build: () => {
     noise({ dur: 0.06, vol: 0.2 });
     tone({ freq: 140, to: 90, dur: 0.12, type: 'square', vol: 0.15, delay: 0.03 });

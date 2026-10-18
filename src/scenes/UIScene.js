@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config.js';
 import { anyAffordable, canAfford, getCost, UPGRADE_ORDER, UPGRADES } from '../logic/upgrades.js';
 import { BUILD_ORDER, BUILD_RECIPES, canPay, costLabel } from '../logic/building.js';
+import { CARDS, rollCards, xpToNext } from '../logic/cards.js';
 import { drawPanel, makeButton, pixelText, VirtualJoystick } from '../ui/widgets.js';
 
 const HUD_HEIGHT = 74;
@@ -19,16 +20,11 @@ export class UIScene extends Phaser.Scene {
     this.joystick = new VirtualJoystick(this, { radius: 48, zoneTop: HUD_HEIGHT + 10 });
     this.createHud();
     this.createDangerOverlay();
+    this.time.delayedCall(700, () => this.banner('PROTECT THE CAMP\nBUILD WALLS!'));
 
-    this.upgradeBtn = makeButton(this, GAME_WIDTH - 72, GAME_HEIGHT - 46, 120, 50, 'UPGRADE', () => this.toggleUpgrades(), {
-      color: 0xef7d57,
-      fontSize: 16,
-    });
     makeButton(this, 72, GAME_HEIGHT - 46, 120, 50, 'BUILD', () => this.toggleBuild(), { color: 0x8a5a3b, fontSize: 16 });
-    this.badge = this.add.circle(GAME_WIDTH - 18, GAME_HEIGHT - 70, 9, 0xffcd75).setStrokeStyle(3, COLORS.ink);
-    this.tweens.add({ targets: this.badge, scale: 1.25, duration: 450, yoyo: true, repeat: -1 });
 
-    this.hint = pixelText(this, GAME_WIDTH / 2, GAME_HEIGHT - 120, 'Gather by day. Survive the night.', 11, '#f4f4f4');
+    this.hint = pixelText(this, GAME_WIDTH / 2, GAME_HEIGHT - 120, 'Protect the camp! Build walls around it.', 11, '#f4f4f4');
     this.tweens.add({ targets: this.hint, alpha: 0, delay: 5000, duration: 800 });
   }
 
@@ -62,6 +58,16 @@ export class UIScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, HUD_HEIGHT + 2, GAME_WIDTH - 12, 6, 0x1a1c2c, 0.85);
     this.phaseBar = this.add.rectangle(6, HUD_HEIGHT + 2, GAME_WIDTH - 12, 4, 0xffcd75).setOrigin(0, 0.5);
     this.phaseText = pixelText(this, GAME_WIDTH / 2, HUD_HEIGHT + 14, '', 10, '#d9d0c1');
+
+    // Camp health
+    this.add.image(GAME_WIDTH / 2 - 92, HUD_HEIGHT + 30, 'camp').setScale(0.5);
+    this.add.rectangle(GAME_WIDTH / 2 - 76, HUD_HEIGHT + 30, 160, 8, 0x1a1c2c, 0.85).setOrigin(0, 0.5);
+    this.campBar = this.add.rectangle(GAME_WIDTH / 2 - 75, HUD_HEIGHT + 30, 158, 5, 0xef7d57).setOrigin(0, 0.5);
+
+    // XP bar (level-up cards)
+    this.levelText = pixelText(this, 26, GAME_HEIGHT - 86, 'LV 1', 12, '#c792ea');
+    this.add.rectangle(48, GAME_HEIGHT - 86, GAME_WIDTH - 58, 8, 0x1a1c2c, 0.85).setOrigin(0, 0.5);
+    this.xpBar = this.add.rectangle(49, GAME_HEIGHT - 86, 0, 5, 0xc792ea).setOrigin(0, 0.5);
   }
 
   createDangerOverlay() {
@@ -93,7 +99,14 @@ export class UIScene extends Phaser.Scene {
     this.beamText.setText(String(s.beams));
     this.waveText.setText(`${s.isNight ? 'NIGHT' : 'DAY'} ${s.wave}`).setColor(s.isNight ? '#b13e53' : '#a7f070');
     this.scoreText.setText(String(s.score));
-    this.badge.setVisible(anyAffordable(this.game_.levels, s));
+    // Camp bar (flashes red while under attack)
+    const camp = this.game_.camp;
+    const campRatio = camp?.active ? Phaser.Math.Clamp(camp.getData('hp') / camp.getData('maxHp'), 0, 1) : 0;
+    this.campBar.width = 158 * campRatio;
+    this.campBar.fillColor = campRatio > 0.5 ? 0xef7d57 : campRatio > 0.25 ? 0xffcd75 : (Math.floor(time / 200) % 2 ? 0xff2a3a : 0xb13e53);
+    // XP bar
+    this.xpBar.width = (GAME_WIDTH - 60) * Phaser.Math.Clamp(s.xp / xpToNext(s.level), 0, 1);
+    this.levelText.setText(`LV ${s.level}`);
     const progress = Phaser.Math.Clamp(s.phaseProgress ?? 0, 0, 1);
     this.phaseBar.width = (GAME_WIDTH - 12) * (s.isNight ? 1 - progress : progress);
     this.phaseBar.fillColor = s.isNight ? (s.bloodMoon ? 0xff2a3a : 0xb13e53) : 0xffcd75;
@@ -105,9 +118,68 @@ export class UIScene extends Phaser.Scene {
 
   // Small message under the HUD (supply drops, etc.)
   toast(text) {
-    const label = pixelText(this, GAME_WIDTH / 2, HUD_HEIGHT + 34, text, 13, '#a7f070').setAlpha(0);
-    this.tweens.add({ targets: label, alpha: 1, y: HUD_HEIGHT + 30, duration: 200 });
+    const label = pixelText(this, GAME_WIDTH / 2, HUD_HEIGHT + 52, text, 13, '#a7f070').setAlpha(0);
+    this.tweens.add({ targets: label, alpha: 1, y: HUD_HEIGHT + 48, duration: 200 });
     this.tweens.add({ targets: label, alpha: 0, delay: 2200, duration: 400, onComplete: () => label.destroy() });
+  }
+
+  // Level-up: pause and offer 3 random cards ---------------------------------------
+  queueLevelUp() {
+    if (!this.modal && this.game_.state.pendingLevelUps > 0 && !this.game_.state.over) this.showCards();
+  }
+
+  showCards() {
+    const picks = rollCards(this.game_.cards);
+    if (picks.length === 0) {
+      this.game_.state.pendingLevelUps = 0;
+      return;
+    }
+    this.openModal((c) => {
+      c.kind = 'cards';
+      const s = this.game_.state;
+      const title = pixelText(this, GAME_WIDTH / 2, 120, `LEVEL ${s.level}!`, 30, '#c792ea');
+      const sub = pixelText(this, GAME_WIDTH / 2, 152, 'Choose one card', 12, '#d9d0c1');
+      c.add([title, sub]);
+      this.tweens.add({ targets: title, scale: 1.1, duration: 500, yoyo: true, repeat: -1 });
+      const choose = (id) => {
+        if (!this.modal || this.modal.kind !== 'cards') return;
+        this.game_.pickCard(id);
+        this.closeModal();
+        // More level-ups waiting? show the next set right away
+        this.time.delayedCall(150, () => this.queueLevelUp());
+      };
+      picks.forEach((id, i) => {
+        const def = CARDS[id];
+        const owned = this.game_.cards[id] ?? 0;
+        const y = 230 + i * 118;
+        const rare = def.rarity === 'rare';
+        const card = this.add.container(GAME_WIDTH / 2, y);
+        const g = this.add.graphics();
+        drawPanel(g, -150, -48, 300, 96, rare ? 0x3d1f4f : 0x29366f, rare ? 0xc792ea : COLORS.ink);
+        const icon = this.add.image(-118, 0, def.icon).setScale(2);
+        const name = pixelText(this, -88, -22, def.name, 15, rare ? '#e0b0ff' : '#ffcd75').setOrigin(0, 0.5);
+        const desc = pixelText(this, -88, 2, def.desc, 11, '#f4f4f4').setOrigin(0, 0.5);
+        const dots = pixelText(this, -88, 26, `${'■'.repeat(owned)}${'□'.repeat(def.max - owned)}  ${rare ? 'RARE' : ''}`, 10, '#94b0c2').setOrigin(0, 0.5);
+        const key = pixelText(this, 130, -30, String(i + 1), 12, '#566c86');
+        card.add([g, icon, name, desc, dots, key]);
+        card.setSize(300, 96).setInteractive(new Phaser.Geom.Rectangle(0, 0, 300, 96), Phaser.Geom.Rectangle.Contains);
+        card.isButton = true;
+        card.on('pointerdown', () => card.setScale(0.96));
+        card.on('pointerout', () => card.setScale(1));
+        card.on('pointerup', () => choose(id));
+        // Cards fly in one after another
+        card.setAlpha(0).setX(GAME_WIDTH / 2 + 60);
+        this.tweens.add({ targets: card, alpha: 1, x: GAME_WIDTH / 2, delay: i * 90, duration: 220, ease: 'Back.out' });
+        c.add(card);
+      });
+      // Keyboard: 1 / 2 / 3
+      const onKey = (event) => {
+        const index = Number(event.key) - 1;
+        if (picks[index]) choose(picks[index]);
+      };
+      this.input.keyboard?.on('keydown', onKey);
+      c.once('destroy', () => this.input.keyboard?.off('keydown', onKey));
+    });
   }
 
   banner(text) {
@@ -136,6 +208,8 @@ export class UIScene extends Phaser.Scene {
     this.modal = null;
     this.joystick.disabled = false;
     if (!this.game_.state.over) this.scene.resume('Game');
+    // A level-up that happened while another menu was open
+    this.time.delayedCall(100, () => this.queueLevelUp());
   }
 
   pauseIfRunning() {

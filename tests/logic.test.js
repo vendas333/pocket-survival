@@ -21,11 +21,13 @@ import {
 import { getHighScore, getMuted, setMuted, submitScore } from '../src/logic/storage.js';
 import { BUILD_ORDER, BUILD_RECIPES, canPay, costLabel, pay } from '../src/logic/building.js';
 import { eat, HUNGER, tickHunger } from '../src/logic/survival.js';
+import { addXp, availableCards, cardModifiers, CARDS, rollCards, xpToNext } from '../src/logic/cards.js';
 import { crateTier, lootLabel, rollLoot } from '../src/logic/loot.js';
 import { addSouls, buyMeta, computeSouls, emptyMeta, loadMeta, metaCost, metaModifiers, saveMeta } from '../src/logic/meta.js';
 import {
   applyDamage,
   centeredRect,
+  chooseTarget,
   footprint,
   isFree,
   overlaps,
@@ -240,6 +242,13 @@ describe('placement & collisions', () => {
     expect(separation(a, [a, { x: 200, y: 200 }], 22)).toEqual({ x: 0, y: 0 });
   });
 
+  it('at night the horde goes for the camp unless the player is close', () => {
+    expect(chooseTarget({ isNight: true, campAlive: true, distanceToPlayer: 400 })).toBe('camp');
+    expect(chooseTarget({ isNight: true, campAlive: true, distanceToPlayer: 100 })).toBe('player');
+    expect(chooseTarget({ isNight: true, campAlive: false, distanceToPlayer: 400 })).toBe('player');
+    expect(chooseTarget({ isNight: false, campAlive: true, distanceToPlayer: 400 })).toBe('player');
+  });
+
   it('day zombies chase only once seen, night zombies always', () => {
     expect(shouldChase({ isNight: false, onScreen: false, aggro: false })).toBe(false);
     expect(shouldChase({ isNight: false, onScreen: true, aggro: false })).toBe(true);
@@ -314,6 +323,45 @@ describe('loot', () => {
 
   it('labels loot for the pop-up', () => {
     expect(lootLabel({ wood: 5, stone: 0, beams: 0, souls: 3, food: 2, heal: 40 })).toBe('+5 wood  +3 souls  +2 berries  +MEDKIT');
+  });
+});
+
+describe('level-up cards', () => {
+  it('xp levels you up, carrying the leftover', () => {
+    expect(xpToNext(1)).toBe(7);
+    expect(addXp(1, 0, 5)).toEqual({ level: 1, xp: 5, levelsGained: 0 });
+    expect(addXp(1, 5, 3)).toEqual({ level: 2, xp: 1, levelsGained: 1 });
+    expect(addXp(1, 0, 7 + 10 + 3).levelsGained).toBe(2); // 7 then 10
+  });
+
+  it('offers 3 distinct cards you do not have maxed', () => {
+    const owned = { multi: CARDS.multi.max, mason: CARDS.mason.max };
+    for (let i = 0; i < 100; i++) {
+      const picks = rollCards(owned);
+      expect(picks).toHaveLength(3);
+      expect(new Set(picks).size).toBe(3);
+      expect(picks).not.toContain('multi');
+      expect(picks).not.toContain('mason');
+    }
+  });
+
+  it('offers fewer cards when almost everything is maxed', () => {
+    const owned = Object.fromEntries(Object.entries(CARDS).map(([id, c]) => [id, c.max]));
+    owned.sharp = 0;
+    expect(rollCards(owned)).toEqual(['sharp']);
+    expect(availableCards(owned)).toEqual(['sharp']);
+  });
+
+  it('cards stack into modifiers', () => {
+    const m = cardModifiers({ sharp: 2, quick: 1, multi: 1, pierce: 2, explode: 1, crit: 2, mason: 1 });
+    expect(m.damage).toBe(2);
+    expect(m.fireIntervalMultiplier).toBeCloseTo(0.85);
+    expect(m.projectiles).toBe(1);
+    expect(m.pierce).toBe(2);
+    expect(m.explodeDamage).toBe(2);
+    expect(m.critChance).toBeCloseTo(0.3);
+    expect(m.structureHpMultiplier).toBeCloseTo(1.4);
+    expect(cardModifiers({}).speedMultiplier).toBe(1);
   });
 });
 

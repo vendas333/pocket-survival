@@ -467,6 +467,20 @@ export const SPRITES = {
     'kttTttTttTttTttk',
     'kkkkkkkkkkkkkkkk',
   ],
+  // Survivors' camp: tent + fire (the thing you must protect)
+  camp: [
+    '......kk..............',
+    '.....kook.............',
+    '....kooook............',
+    '...kooTTook...........',
+    '..koooTTooook.....k...',
+    '.kooooTkoooook...kyk..',
+    'kooooTkkkoooook.kyoyk.',
+    'kooooTkkkoooook.koyok.',
+    'kkkkkkkkkkkkkkkkkrookk',
+    '................kTTTk.',
+    '.................kkk..',
+  ],
   crate: [
     'kkkkkkkkkk',
     'ktTttttTtk',

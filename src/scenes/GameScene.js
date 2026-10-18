@@ -4,12 +4,15 @@ import { sfx } from '../audio/sfx.js';
 import { computeScore, CYCLE_SECONDS, DAY_SECONDS, ENEMY_TYPES, getCycle, getDifficulty, isBloodMoon, pickEnemyType } from '../logic/difficulty.js';
 import { buyUpgrade, computeStats, emptyLevels } from '../logic/upgrades.js';
 import { submitScore } from '../logic/storage.js';
+import { addXp, cardModifiers, CARDS, XP_PER_KILL } from '../logic/cards.js';
 import { crateTier, LOOT, lootLabel, rollLoot } from '../logic/loot.js';
 import { addSouls, computeSouls, loadMeta, metaModifiers, saveMeta } from '../logic/meta.js';
 import { BUILD_RECIPES, pay } from '../logic/building.js';
 import { eat, HUNGER, tickHunger } from '../logic/survival.js';
-import { applyDamage, centeredRect, isFree, separation, shouldChase, snap, validatePlacement } from '../logic/placement.js';
+import { applyDamage, centeredRect, chooseTarget, isFree, separation, shouldChase, snap, validatePlacement } from '../logic/placement.js';
 import { pixelText } from '../ui/widgets.js';
+
+const CAMP_HP = 400;
 
 const NODE_DEFS = {
   tree: { texture: 'tree', depleted: 'stump', hp: 4, gives: 'wood', solid: { w: 16, h: 12, ox: 16, oy: 46 } },
@@ -34,6 +37,8 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     this.meta = metaModifiers(loadMeta().levels);
+    this.cards = {};
+    this.cardMods = cardModifiers(this.cards);
     this.levels = emptyLevels();
     this.stats = this.withMeta(computeStats(this.levels));
     this.state = {
@@ -44,6 +49,9 @@ export class GameScene extends Phaser.Scene {
       nightsSurvived: 0,
       bloodMoonsSurvived: 0,
       bonusSouls: 0,
+      level: 1,
+      xp: 0,
+      pendingLevelUps: 0,
       lootOpened: 0,
       beams: 0,
       hunger: HUNGER.max,
@@ -82,6 +90,7 @@ export class GameScene extends Phaser.Scene {
     this.pickups = this.physics.add.group();
     this.createNodes();
     this.createLoot();
+    this.createCamp();
     this.createPlayer();
     this.createEmitters();
     // Night overlay redrawn every frame with light holes (player + campfires)
@@ -107,7 +116,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.fadeIn(300, 26, 28, 44);
 
     this.keys = this.input.keyboard?.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT');
-    this.input.keyboard?.on('keydown-U', () => this.ui()?.toggleUpgrades());
+
     this.input.keyboard?.on('keydown-B', () => this.ui()?.toggleBuild());
     if (import.meta.env.DEV) {
       // Test shortcut (dev server only): N = jump to the next day/night phase
@@ -224,7 +233,7 @@ export class GameScene extends Phaser.Scene {
 
   createPlayer() {
     this.shadow = this.add.image(0, 0, 'shadow');
-    this.player = this.physics.add.sprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, 'player0');
+    this.player = this.physics.add.sprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2 + 56, 'player0');
     this.player.setCollideWorldBounds(true);
     this.player.body.setSize(20, 12).setOffset(8, 24);
     this.player.play('player-idle');
@@ -376,8 +385,9 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
         // Night: the horde arrives in a pack from one direction, just off screen
         const angle = this.hordeAngle + Phaser.Math.FloatBetween(-0.6, 0.6);
         const distance = Phaser.Math.Between(390, 470);
-        x = Phaser.Math.Clamp(this.player.x + Math.cos(angle) * distance, 16, WORLD_WIDTH - 16);
-        y = Phaser.Math.Clamp(this.player.y + Math.sin(angle) * distance, 16, WORLD_HEIGHT - 16);
+        const center = this.camp?.active ? this.camp : this.player;
+        x = Phaser.Math.Clamp(center.x + Math.cos(angle) * distance, 16, WORLD_WIDTH - 16);
+        y = Phaser.Math.Clamp(center.y + Math.sin(angle) * distance, 16, WORLD_HEIGHT - 16);
       } else {
         // Day: stragglers anywhere in the forest, out of sight
         x = Phaser.Math.Between(16, WORLD_WIDTH - 16);
@@ -436,7 +446,12 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
         enemy.setData('aggro', true);
         this.floatText(enemy.x, enemy.y - 22, '!', '#b13e53');
       }
-      const angle = Math.atan2(py - enemy.y, px - enemy.x);
+      const goal = chooseTarget({
+        isNight: this.state.isNight,
+        campAlive: Boolean(this.camp?.active),
+        distanceToPlayer: Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y),
+      }) === 'camp' ? this.camp : this.player;
+      const angle = Math.atan2(goal.y - enemy.y, goal.x - enemy.x);
       const push = separation(enemy, this.enemies.getChildren(), 22);
       const vx = Math.cos(angle) * speed + push.x * speed * 0.9;
       const vy = Math.sin(angle) * speed + push.y * speed * 0.9;
@@ -483,7 +498,7 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
       shot.setDepth(5500);
       shot.body.setCircle(5, 1, 1);
       shot.setVelocity(Math.cos(angle) * 340, Math.sin(angle) * 340);
-      shot.setData('damage', this.stats.damage);
+      shot.setData({ damage: this.stats.damage, pierce: this.cardMods.pierce, hits: new Set() });
       this.time.delayedCall(700, () => shot.destroy());
     }
     // Small throw recoil
@@ -493,8 +508,17 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
 
   onShotHit(shot, enemy) {
     if (!shot.active || !enemy.active) return;
-    const damage = shot.getData('damage');
-    shot.destroy();
+    const hits = shot.getData('hits');
+    if (hits?.has(enemy)) return; // a piercing stone hits each zombie once
+    hits?.add(enemy);
+    let damage = shot.getData('damage');
+    if (Math.random() < this.cardMods.critChance) {
+      damage *= 3;
+      this.floatText(enemy.x, enemy.y - 32, 'CRIT!', '#ffcd75');
+    }
+    const pierce = shot.getData('pierce') ?? 0;
+    if (pierce > 0) shot.setData('pierce', pierce - 1);
+    else shot.destroy();
     this.emitters.spark.explode(5, shot.x, shot.y);
     this.hurtEnemy(enemy, damage, this.player.x, this.player.y);
   }
@@ -533,6 +557,7 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     sfx.enemyDie();
     this.state.kills += 1;
     this.state.killScore += enemy.getData('score');
+    this.onKillCards(enemy, type);
     this.floatText(enemy.x, enemy.y - 16, `+${enemy.getData('score')}`, '#ffcd75');
     const roll = Math.random();
     const dropChance = type === 'brute' ? 1 : 0.3;
@@ -576,7 +601,7 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     for (const pickup of this.pickups.getChildren()) {
       if (!pickup.active) continue;
       const d = Phaser.Math.Distance.Between(pickup.x, pickup.y, this.player.x, this.player.y);
-      if (d < PLAYER.pickupRange) {
+      if (d < PLAYER.pickupRange + this.cardMods.pickupBonus) {
         this.tweens.killTweensOf(pickup);
         this.physics.moveToObject(pickup, this.player, 260);
       }
@@ -625,7 +650,7 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     sfx.chop();
     this.burst(best.def.gives, best.x, best.y - 14, 6);
     this.tweens.add({ targets: best.sprite, x: best.x + 2, duration: 40, yoyo: true, repeat: 1, onComplete: () => best.sprite.setX(best.x) });
-    this.gain(best.def.gives, 1, best.x, best.y - 20);
+    this.gain(best.def.gives, 1 + (best.def.gives === 'berry' ? 0 : this.cardMods.gatherBonus), best.x, best.y - 20);
     if (best.hp <= 0) this.depleteNode(best);
   }
 
@@ -698,6 +723,7 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
       this.night.erase(this.lightStamp);
     };
     stamp(this.player.x, this.player.y, 1);
+    if (this.camp?.active) stamp(this.camp.x, this.camp.y, 1.7 + Math.random() * 0.05);
     for (const fire of this.fires.getChildren()) stamp(fire.x, fire.y, 1.5 + Math.random() * 0.05);
   }
 
@@ -706,8 +732,10 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     const { hunger, damage } = tickHunger(this.state.hunger, dt * this.meta.hungerMultiplier);
     this.state.hunger = hunger;
     let hp = this.state.hp - damage;
-    const nearFire = this.fires.getChildren().some((f) => Phaser.Math.Distance.Between(f.x, f.y, this.player.x, this.player.y) < 80);
+    const nearFire = [...this.fires.getChildren(), ...(this.camp?.active ? [this.camp] : [])].some((f) => Phaser.Math.Distance.Between(f.x, f.y, this.player.x, this.player.y) < 90);
     if (nearFire) hp += 2 * dt;
+    hp += this.cardMods.regen * dt;
+    if (!this.state.isNight && this.cardMods.repairPerSecond) this.repairStructures(this.cardMods.repairPerSecond * dt);
     this.state.hp = Phaser.Math.Clamp(hp, 0, this.state.maxHp);
     this.state.nearFire = nearFire;
     if (this.state.hp <= 0 && !this.state.over) this.gameOver();
@@ -802,7 +830,7 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     const group = this.groupsByKind[recipe.kind];
     // Static body is created from the (already rotated) texture, so it matches the art exactly
     const piece = group.create(x, y, this.structureKey(id));
-    const maxHp = Math.round(recipe.hp * this.meta.structureHpMultiplier);
+    const maxHp = Math.round(recipe.hp * this.meta.structureHpMultiplier * this.cardMods.structureHpMultiplier);
     piece.setData({ id, hp: maxHp, maxHp, nextHit: 0 });
     piece.setDepth(recipe.kind === 'trap' ? y - 20 : y + piece.height / 2);
     if (recipe.kind === 'fire') {
@@ -833,6 +861,7 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     bar.clear();
     bar.fillStyle(0x1a1c2c, 0.9).fillRect(piece.x - w / 2 - 1, piece.y - piece.height / 2 - 9, w + 2, 6);
     bar.fillStyle(ratio > 0.5 ? 0x38b764 : ratio > 0.25 ? 0xffcd75 : 0xb13e53, 1).fillRect(piece.x - w / 2, piece.y - piece.height / 2 - 8, w * ratio, 4);
+    if (piece.getData('camp')) this.onCampHit(hp, destroyed);
     if (destroyed) {
       this.burst(piece.getData('id') === 'stoneWall' ? 'stone' : 'wood', piece.x, piece.y, 18);
       this.cameras.main.shake(120, 0.006);
@@ -845,10 +874,11 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
 
   onZombieHitsWall(enemy, wall) {
     // Blocked zombies claw at the wall
-    if (!wall.active || this.time.now < wall.getData('nextHit')) return;
-    wall.setData('nextHit', this.time.now + 800);
+    // Cooldown per zombie, so a bigger horde really does more damage
+    if (!wall.active || !enemy.active || this.time.now < (enemy.getData('nextClaw') ?? 0)) return;
+    enemy.setData('nextClaw', this.time.now + 1000);
     sfx.chop();
-    this.damageStructure(wall, Math.ceil(enemy.getData('damage') / 2));
+    this.damageStructure(wall, Math.ceil(enemy.getData('damage') / (wall.getData('camp') ? 3 : 2)));
   }
 
   onZombieOnSpikes(enemy, spikes) {
@@ -1003,6 +1033,11 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
         nearest = spot;
       }
     }
+    let tint = nearest?.tier === 'rare' ? 0xa7f070 : 0xffffff;
+    if (this.state.isNight && this.camp?.active) {
+      nearest = this.camp;
+      tint = 0xff4d4d;
+    }
     const visible = nearest && !Phaser.Geom.Rectangle.Contains(cam.worldView, nearest.x, nearest.y);
     this.crateArrow.setVisible(Boolean(visible));
     if (!visible) return;
@@ -1011,12 +1046,56 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     const angle = Math.atan2(nearest.y - this.player.y, nearest.x - this.player.x);
     const x = Phaser.Math.Clamp(sx + Math.cos(angle) * 150, 24, GAME_WIDTH - 24);
     const y = Phaser.Math.Clamp(sy + Math.sin(angle) * 230, 110, GAME_HEIGHT - 110);
-    this.crateArrow.setPosition(x, y).setRotation(angle + Math.PI / 2).setTint(nearest.tier === 'rare' ? 0xa7f070 : 0xffffff);
+    this.crateArrow.setPosition(x, y).setRotation(angle + Math.PI / 2).setTint(tint);
+  }
+
+  // Camp: what you defend. The horde attacks it at night; if it falls, the run is over.
+  createCamp() {
+    const x = WORLD_WIDTH / 2;
+    const y = WORLD_HEIGHT / 2;
+    // Clear anything that spawned on the camp site
+    for (const n of this.nodes) {
+      if (Phaser.Math.Distance.Between(n.x, n.y, x, y) < 90 && n.sprite.body) {
+        n.depleted = true;
+        n.sprite.body.enable = false;
+        n.sprite.setVisible(false);
+      }
+    }
+    const maxHp = Math.round(CAMP_HP * this.meta.structureHpMultiplier);
+    this.camp = this.walls.create(x, y, 'camp');
+    this.camp.setData({ id: 'camp', camp: true, hp: maxHp, maxHp, nextHit: 0 }).setDepth(y + 16);
+    this.add.image(x, y + 18, 'shadow').setScale(2.4, 1.6).setDepth(y - 1);
+    this.nextCampAlert = 0;
+    this.state.campMaxHp = maxHp;
+  }
+
+  onCampHit(hp, destroyed) {
+    this.state.campHp = hp;
+    if (destroyed) {
+      this.camp.getData('bar')?.destroy();
+      this.ui()?.banner('THE CAMP HAS FALLEN');
+      this.time.delayedCall(10, () => this.gameOver('camp'));
+      return;
+    }
+    if (this.time.now > this.nextCampAlert) {
+      this.nextCampAlert = this.time.now + 6000;
+      this.ui()?.toast('CAMP UNDER ATTACK!');
+      sfx.warning();
+    }
   }
 
   // Permanent upgrades bought with souls in the menu
   withMeta(stats) {
-    return { ...stats, maxHp: stats.maxHp + this.meta.maxHpBonus, damage: stats.damage + this.meta.damageBonus };
+    const c = this.cardMods;
+    return {
+      ...stats,
+      maxHp: stats.maxHp + this.meta.maxHpBonus + c.maxHp,
+      damage: stats.damage + this.meta.damageBonus + c.damage,
+      fireInterval: Math.round(stats.fireInterval * c.fireIntervalMultiplier),
+      projectiles: stats.projectiles + c.projectiles,
+      speed: Math.round(stats.speed * c.speedMultiplier),
+      range: Math.round(stats.range * c.rangeMultiplier),
+    };
   }
 
   // Souls are banked even when you die: that's what makes 'one more run' worth it
@@ -1024,6 +1103,69 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     const souls = computeSouls(this.state) + this.state.bonusSouls;
     saveMeta(addSouls(loadMeta(), souls));
     return souls;
+  }
+
+  // Level-up cards ------------------------------------------------------------------
+
+  onKillCards(enemy, type) {
+    // XP
+    const r = addXp(this.state.level, this.state.xp, XP_PER_KILL[type] ?? 1);
+    this.state.level = r.level;
+    this.state.xp = r.xp;
+    if (r.levelsGained > 0) {
+      this.state.pendingLevelUps += r.levelsGained;
+      sfx.levelUp();
+      this.floatText(this.player.x, this.player.y - 30, 'LEVEL UP!', '#c792ea');
+      this.ui()?.queueLevelUp();
+    }
+    // Bloodlust
+    if (this.cardMods.healPerKill) this.state.hp = Math.min(this.state.maxHp, this.state.hp + this.cardMods.healPerKill);
+    // Volatile Dead: corpses explode and hurt nearby zombies
+    const blast = this.cardMods.explodeDamage;
+    if (blast > 0) {
+      const x = enemy.x;
+      const y = enemy.y;
+      this.emitters.spark.explode(14, x, y);
+      this.burst('hurt', x, y, 10);
+      sfx.breakWall();
+      const victims = this.enemies.getChildren().filter((e) => e.active && e !== enemy && Phaser.Math.Distance.Between(e.x, e.y, x, y) < 48);
+      this.time.delayedCall(60, () => victims.forEach((v) => this.hurtEnemy(v, blast, x, y)));
+    }
+  }
+
+  // Called from the UI when the player picks a card
+  pickCard(id) {
+    if (!CARDS[id] || this.state.pendingLevelUps <= 0) return;
+    this.state.pendingLevelUps -= 1;
+    this.cards[id] = (this.cards[id] ?? 0) + 1;
+    this.cardMods = cardModifiers(this.cards);
+    const oldMax = this.stats.maxHp;
+    this.stats = this.withMeta(computeStats(this.levels));
+    if (this.stats.maxHp > oldMax) {
+      this.state.maxHp = this.stats.maxHp;
+      this.state.hp = Math.min(this.state.maxHp, this.state.hp + (this.stats.maxHp - oldMax));
+    }
+    // Mason: existing structures get the HP boost too
+    if (id === 'mason') {
+      for (const s of this.allStructures()) {
+        const max = Math.round(s.getData('maxHp') * 1.4);
+        s.setData('maxHp', max).setData('hp', Math.min(max, s.getData('hp') * 1.4));
+      }
+    }
+    sfx.upgrade();
+  }
+
+  repairStructures(amount) {
+    for (const s of this.allStructures()) {
+      const hp = s.getData('hp');
+      const max = s.getData('maxHp');
+      if (hp >= max) continue;
+      s.setData('hp', Math.min(max, hp + amount));
+      if (s.getData('hp') >= max) {
+        s.getData('bar')?.destroy();
+        s.setData('bar', null);
+      }
+    }
   }
 
   // Upgrades (called from UI) ---------------------------------------------------
@@ -1046,7 +1188,8 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
 
   // End ---------------------------------------------------------------------
 
-  gameOver() {
+  gameOver(reason = 'died') {
+    if (this.state.over) return;
     this.state.over = true;
     this.physics.pause();
     this.player.anims.stop();
@@ -1059,6 +1202,7 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
       seconds: Math.floor(this.state.elapsed / 1000),
       isNewBest: submitScore(this.state.score),
       souls: this.awardSouls(),
+      reason,
     };
     this.time.delayedCall(900, () => {
       this.scene.stop('UI');

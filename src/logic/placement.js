@@ -69,6 +69,14 @@ export function separation(self, others, radius) {
   return len > 1 ? { x: x / len, y: y / len } : { x, y };
 }
 
+// Who a chasing zombie goes after: at night the horde marches on the camp,
+// unless the player is close enough to grab their attention.
+export const PLAYER_AGGRO_RANGE = 150;
+export function chooseTarget({ isNight, campAlive, distanceToPlayer }) {
+  if (isNight && campAlive && distanceToPlayer > PLAYER_AGGRO_RANGE) return 'camp';
+  return 'player';
+}
+
 // Day zombies only chase once they have been seen; at night everyone hunts.
 export function shouldChase({ isNight, onScreen, aggro }) {
   return Boolean(isNight || aggro || onScreen);
