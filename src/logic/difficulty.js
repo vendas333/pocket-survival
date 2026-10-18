@@ -1,29 +1,54 @@
-// Difficulty curve — pure functions of elapsed survival time (seconds).
+// Difficulty + day/night cycle — pure functions of elapsed survival time (seconds).
+// Days are calm (few slow zombies); nights get serious.
+
+export const DAY_SECONDS = 70;
+export const NIGHT_SECONDS = 50;
+export const CYCLE_SECONDS = DAY_SECONDS + NIGHT_SECONDS;
+const FADE_SECONDS = 6;
 
 export const ENEMY_TYPES = {
-  slime: { hp: 3, speed: 42, damage: 10, score: 10, unlockAt: 0, weight: 6 },
-  bat: { hp: 2, speed: 78, damage: 6, score: 15, unlockAt: 30, weight: 4 },
-  skeleton: { hp: 7, speed: 50, damage: 15, score: 30, unlockAt: 75, weight: 3 },
-  golem: { hp: 22, speed: 32, damage: 25, score: 80, unlockAt: 150, weight: 1 },
+  zombie: { hp: 3, speed: 34, damage: 10, score: 10, unlockAt: 0, weight: 6 },
+  runner: { hp: 2, speed: 74, damage: 7, score: 15, unlockAt: 0, weight: 3, nightOnly: true },
+  brute: { hp: 18, speed: 28, damage: 25, score: 60, unlockAt: CYCLE_SECONDS, weight: 1 },
 };
+
+export function getCycle(seconds) {
+  const t = Math.max(0, seconds);
+  const phase = t % CYCLE_SECONDS;
+  const isNight = phase >= DAY_SECONDS;
+  // 0 = full daylight, 1 = full night (smooth dusk/dawn)
+  const darkness = isNight
+    ? Math.min(1, (phase - DAY_SECONDS) / FADE_SECONDS, (CYCLE_SECONDS - phase) / FADE_SECONDS)
+    : 0;
+  return { day: Math.floor(t / CYCLE_SECONDS) + 1, isNight, darkness };
+}
 
 export function getDifficulty(seconds) {
   const t = Math.max(0, seconds);
+  const { day, isNight } = getCycle(t);
+  const base = {
+    spawnInterval: Math.max(300, Math.round(1300 - t * 4)),
+    spawnBatch: 1 + Math.floor(t / 150),
+    maxEnemies: Math.min(80, 12 + Math.floor(t / 5)),
+    hpMultiplier: 1 + t / 150,
+    speedMultiplier: Math.min(1.6, 1 + t / 400),
+    level: day,
+    isNight,
+  };
+  if (isNight) return base;
+  // Daytime: quiet scavenging
   return {
-    // ms between spawns, never faster than 260ms
-    spawnInterval: Math.max(260, Math.round(1500 - t * 9)),
-    // how many enemies spawn per tick
-    spawnBatch: 1 + Math.floor(t / 60),
-    maxEnemies: Math.min(90, 8 + Math.floor(t / 3)),
-    hpMultiplier: 1 + t / 100,
-    speedMultiplier: Math.min(1.8, 1 + t / 300),
-    level: 1 + Math.floor(t / 30),
+    ...base,
+    spawnInterval: base.spawnInterval * 3,
+    spawnBatch: 1,
+    maxEnemies: Math.max(4, Math.floor(base.maxEnemies * 0.3)),
+    speedMultiplier: base.speedMultiplier * 0.85,
   };
 }
 
-export function availableEnemyTypes(seconds) {
+export function availableEnemyTypes(seconds, isNight = getCycle(seconds).isNight) {
   return Object.entries(ENEMY_TYPES)
-    .filter(([, def]) => seconds >= def.unlockAt)
+    .filter(([, def]) => seconds >= def.unlockAt && (isNight || !def.nightOnly))
     .map(([id]) => id);
 }
 

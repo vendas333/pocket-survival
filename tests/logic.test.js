@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   availableEnemyTypes,
   computeScore,
+  CYCLE_SECONDS,
+  DAY_SECONDS,
+  getCycle,
   getDifficulty,
   pickEnemyType,
 } from '../src/logic/difficulty.js';
@@ -25,35 +28,41 @@ function memoryStorage() {
 }
 
 describe('difficulty', () => {
-  it('gets harder over time', () => {
-    const early = getDifficulty(0);
-    const late = getDifficulty(180);
-    expect(late.spawnInterval).toBeLessThan(early.spawnInterval);
-    expect(late.maxEnemies).toBeGreaterThan(early.maxEnemies);
-    expect(late.hpMultiplier).toBeGreaterThan(early.hpMultiplier);
-    expect(late.spawnBatch).toBeGreaterThan(early.spawnBatch);
+  it('cycles day and night', () => {
+    expect(getCycle(10)).toMatchObject({ day: 1, isNight: false, darkness: 0 });
+    expect(getCycle(DAY_SECONDS + 20)).toMatchObject({ day: 1, isNight: true, darkness: 1 });
+    expect(getCycle(DAY_SECONDS + 3).darkness).toBeCloseTo(0.5);
+    expect(getCycle(CYCLE_SECONDS + 1)).toMatchObject({ day: 2, isNight: false });
   });
 
-  it('respects floors and caps', () => {
-    const extreme = getDifficulty(100000);
-    expect(extreme.spawnInterval).toBe(260);
-    expect(extreme.maxEnemies).toBe(90);
-    expect(extreme.speedMultiplier).toBe(1.8);
+  it('nights are much harder than days', () => {
+    const day = getDifficulty(30);
+    const night = getDifficulty(DAY_SECONDS + 20);
+    expect(night.isNight).toBe(true);
+    expect(night.spawnInterval).toBeLessThan(day.spawnInterval);
+    expect(night.maxEnemies).toBeGreaterThan(day.maxEnemies);
+  });
+
+  it('gets harder every night', () => {
+    const night1 = getDifficulty(DAY_SECONDS + 20);
+    const night3 = getDifficulty(CYCLE_SECONDS * 2 + DAY_SECONDS + 20);
+    expect(night3.spawnInterval).toBeLessThan(night1.spawnInterval);
+    expect(night3.hpMultiplier).toBeGreaterThan(night1.hpMultiplier);
     expect(getDifficulty(-5)).toEqual(getDifficulty(0));
   });
 
-  it('unlocks enemy types progressively', () => {
-    expect(availableEnemyTypes(0)).toEqual(['slime']);
-    expect(availableEnemyTypes(30)).toContain('bat');
-    expect(availableEnemyTypes(74)).not.toContain('skeleton');
-    expect(availableEnemyTypes(200)).toHaveLength(4);
+  it('respects caps', () => {
+    const extreme = getDifficulty(CYCLE_SECONDS * 1000 + DAY_SECONDS + 20);
+    expect(extreme.spawnInterval).toBe(300);
+    expect(extreme.maxEnemies).toBe(80);
+    expect(extreme.speedMultiplier).toBe(1.6);
   });
 
-  it('only picks unlocked types', () => {
-    for (let i = 0; i < 50; i++) {
-      expect(pickEnemyType(10, () => i / 50)).toBe('slime');
-    }
-    expect(pickEnemyType(200, () => 0.9999)).toBe('golem');
+  it('runners only at night, brutes from day 2', () => {
+    expect(availableEnemyTypes(10)).toEqual(['zombie']);
+    expect(availableEnemyTypes(DAY_SECONDS + 10)).toEqual(['zombie', 'runner']);
+    expect(availableEnemyTypes(CYCLE_SECONDS + DAY_SECONDS + 10)).toContain('brute');
+    for (let i = 0; i < 50; i++) expect(pickEnemyType(10, () => i / 50)).toBe('zombie');
   });
 
   it('computes score from time and kills', () => {

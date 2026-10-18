@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { PLAYER, RESOURCES, WORLD_HEIGHT, WORLD_WIDTH } from '../config.js';
 import { sfx } from '../audio/sfx.js';
-import { computeScore, ENEMY_TYPES, getDifficulty, pickEnemyType } from '../logic/difficulty.js';
+import { computeScore, ENEMY_TYPES, getCycle, getDifficulty, pickEnemyType } from '../logic/difficulty.js';
 import { buyUpgrade, computeStats, emptyLevels } from '../logic/upgrades.js';
 import { submitScore } from '../logic/storage.js';
 import { pixelText } from '../ui/widgets.js';
@@ -13,10 +13,9 @@ const NODE_DEFS = {
 };
 
 const PARTICLE_COLORS = {
-  slime: 0xa7f070,
-  bat: 0xb55088,
-  skeleton: 0xf4f4f4,
-  golem: 0x94b0c2,
+  zombie: 0x38b764,
+  runner: 0xb13e53,
+  brute: 0x257179,
   wood: 0xffcd75,
   stone: 0x94b0c2,
   berry: 0xb13e53,
@@ -41,6 +40,7 @@ export class GameScene extends Phaser.Scene {
       elapsed: 0,
       score: 0,
       wave: 1,
+      isNight: false,
       over: false,
     };
     this.fireCooldown = 600;
@@ -60,6 +60,7 @@ export class GameScene extends Phaser.Scene {
     this.createNodes();
     this.createPlayer();
     this.createEmitters();
+    this.darkness = this.add.image(0, 0, 'darkness').setDepth(9000).setAlpha(0);
 
     this.physics.add.collider(this.player, this.obstacles);
     this.physics.add.collider(this.enemies, this.enemies);
@@ -209,11 +210,14 @@ export class GameScene extends Phaser.Scene {
     this.state.score = computeScore(seconds, this.state.killScore);
 
     const difficulty = getDifficulty(seconds);
-    if (difficulty.level !== this.state.wave) {
-      this.state.wave = difficulty.level;
+    const cycle = getCycle(seconds);
+    this.state.wave = cycle.day;
+    if (cycle.isNight !== this.state.isNight) {
+      this.state.isNight = cycle.isNight;
       sfx.wave();
-      this.ui()?.banner(`WAVE ${difficulty.level}`);
+      this.ui()?.banner(cycle.isNight ? `NIGHT ${cycle.day}\nTHEY ARE COMING` : `DAY ${cycle.day}\nYOU SURVIVED`);
     }
+    this.darkness.setPosition(this.player.x, this.player.y).setAlpha(cycle.darkness);
 
     this.updatePlayer();
     this.updateSpawning(dt, seconds, difficulty);
@@ -283,7 +287,7 @@ export class GameScene extends Phaser.Scene {
       knockUntil: 0,
       phase: Math.random() * Math.PI * 2,
     });
-    if (type === 'golem') enemy.setScale(1.5);
+    if (type === 'brute') enemy.setScale(1.5);
     enemy.body.setSize(24, 20).setOffset(6, 14);
     enemy.setAlpha(0);
     this.tweens.add({ targets: enemy, alpha: 1, duration: 300 });
@@ -354,7 +358,7 @@ export class GameScene extends Phaser.Scene {
     enemy.setTintFill(0xffffff);
     this.time.delayedCall(70, () => enemy.active && enemy.clearTint());
     const angle = Math.atan2(enemy.y - this.player.y, enemy.x - this.player.x);
-    const knock = enemy.getData('type') === 'golem' ? 60 : 170;
+    const knock = enemy.getData('type') === 'brute' ? 60 : 170;
     enemy.setVelocity(Math.cos(angle) * knock, Math.sin(angle) * knock);
     enemy.setData('knockUntil', this.time.now + 110);
     if (hp <= 0) this.killEnemy(enemy);
@@ -363,13 +367,13 @@ export class GameScene extends Phaser.Scene {
 
   killEnemy(enemy) {
     const type = enemy.getData('type');
-    this.burst(type, enemy.x, enemy.y, type === 'golem' ? 20 : 10);
+    this.burst(type, enemy.x, enemy.y, type === 'brute' ? 20 : 10);
     sfx.enemyDie();
     this.state.kills += 1;
     this.state.killScore += enemy.getData('score');
     this.floatText(enemy.x, enemy.y - 16, `+${enemy.getData('score')}`, '#ffcd75');
     const roll = Math.random();
-    const dropChance = type === 'golem' ? 1 : 0.3;
+    const dropChance = type === 'brute' ? 1 : 0.3;
     if (roll < dropChance) {
       const kind = Phaser.Utils.Array.GetRandom(['berry', 'wood', 'stone', 'wood', 'stone']);
       this.spawnPickup(kind, enemy.x, enemy.y);

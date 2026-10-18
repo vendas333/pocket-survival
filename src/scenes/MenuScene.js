@@ -24,10 +24,10 @@ export class MenuScene extends Phaser.Scene {
     const title = pixelText(this, cx, 150, 'POCKET\nSURVIVAL', 44, '#ffcd75');
     title.setLineSpacing(-6);
     this.tweens.add({ targets: title, y: 158, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    pixelText(this, cx, 232, 'survive the night forest', 13, '#a7f070');
+    pixelText(this, cx, 232, 'zombies rise every night', 13, '#a7f070');
 
     const hero = this.add.sprite(cx - 30, 330, 'player0').play('player-walk').setScale(1.4);
-    const slime = this.add.sprite(cx + 40, 336, 'slime0').play('slime-move').setScale(1.4);
+    const slime = this.add.sprite(cx + 40, 330, 'zombie0').play('zombie-move').setScale(1.4);
     this.tweens.add({ targets: [hero, slime], x: '+=10', duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
     const best = getHighScore();

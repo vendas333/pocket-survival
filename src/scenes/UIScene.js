@@ -26,7 +26,7 @@ export class UIScene extends Phaser.Scene {
     this.badge = this.add.circle(GAME_WIDTH - 18, GAME_HEIGHT - 70, 9, 0xffcd75).setStrokeStyle(3, COLORS.ink);
     this.tweens.add({ targets: this.badge, scale: 1.25, duration: 450, yoyo: true, repeat: -1 });
 
-    this.hint = pixelText(this, GAME_WIDTH / 2, GAME_HEIGHT - 120, 'Drag to move • walk into trees & rocks', 11, '#f4f4f4');
+    this.hint = pixelText(this, GAME_WIDTH / 2, GAME_HEIGHT - 120, 'Gather by day. Survive the night.', 11, '#f4f4f4');
     this.tweens.add({ targets: this.hint, alpha: 0, delay: 5000, duration: 800 });
   }
 
@@ -45,7 +45,7 @@ export class UIScene extends Phaser.Scene {
     this.woodText = pixelText(this, 40, 52, '0', 14).setOrigin(0, 0.5);
     this.add.image(92, 52, 'stone');
     this.stoneText = pixelText(this, 108, 52, '0', 14).setOrigin(0, 0.5);
-    this.waveText = pixelText(this, 180, 52, 'WAVE 1', 12, '#a7f070');
+    this.waveText = pixelText(this, 180, 52, 'DAY 1', 12, '#a7f070');
     this.scoreText = pixelText(this, 268, 52, '0', 14, '#f4f4f4');
 
     makeButton(this, GAME_WIDTH - 30, 24, 36, 30, 'II', () => this.togglePause(), { color: 0x3b5dc9, fontSize: 14 });
@@ -74,7 +74,7 @@ export class UIScene extends Phaser.Scene {
     this.timeText.setText(`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`);
     this.woodText.setText(String(s.wood));
     this.stoneText.setText(String(s.stone));
-    this.waveText.setText(`WAVE ${s.wave}`);
+    this.waveText.setText(`${s.isNight ? 'NIGHT' : 'DAY'} ${s.wave}`).setColor(s.isNight ? '#b13e53' : '#a7f070');
     this.scoreText.setText(String(s.score));
     this.badge.setVisible(anyAffordable(this.game_.levels, s));
     this.danger.setAlpha(ratio < 0.3 && !s.over ? 0.25 + Math.sin(time / 150) * 0.15 : 0);

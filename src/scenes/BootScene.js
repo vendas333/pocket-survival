@@ -14,10 +14,9 @@ export class BootScene extends Phaser.Scene {
       this.anims.create({ key, frames: frames.map((f) => ({ key: f })), frameRate, repeat: -1 });
     anim('player-walk', ['player0', 'player1'], 8);
     anim('player-idle', ['player0'], 1);
-    anim('slime-move', ['slime0', 'slime1'], 4);
-    anim('bat-move', ['bat0', 'bat1'], 10);
-    anim('skeleton-move', ['skeleton0', 'skeleton1'], 6);
-    anim('golem-move', ['golem0', 'golem1'], 3);
+    anim('zombie-move', ['zombie0', 'zombie1'], 3);
+    anim('runner-move', ['runner0', 'runner1'], 9);
+    anim('brute-move', ['brute0', 'brute1'], 2);
 
     this.scene.start('Menu');
   }

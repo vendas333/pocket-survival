@@ -165,6 +165,90 @@ export const SPRITES = {
     '.kmmk.kmmk..',
     '.kkkk.kkkk..',
   ],
+  zombie0: [
+    '....kkkk....',
+    '...kggggk...',
+    '..kgGgggGk..',
+    '..kgrggrgk..',
+    '..kggggggk..',
+    '..kkgkkgkk..',
+    'kkkbbbbbbkkk',
+    'kggbbmbbbggk',
+    'kk.kbbbbk.kk',
+    '...kddddk...',
+    '...kdkkdk...',
+    '...kk..kk...',
+  ],
+  zombie1: [
+    '....kkkk....',
+    '...kggggk...',
+    '..kgGgggGk..',
+    '..kgrggrgk..',
+    '..kggggggk..',
+    '..kkgkkgkk..',
+    'kkkbbbbbbkkk',
+    'kggbbmbbbggk',
+    'kk.kbbbbk.kk',
+    '...kddddk...',
+    '..kdk..kdk..',
+    '..kk....kk..',
+  ],
+  runner0: [
+    '....kkkk....',
+    '...knnnnk...',
+    '..knnnnnnk..',
+    '..knrnnrnk..',
+    '..knnkknnk..',
+    '...kknnkk...',
+    '.kkkrrrrkkk.',
+    'knnkrrrrknnk',
+    'kk.krrrrk.kk',
+    '...kmmmmk...',
+    '..kmk..kmk..',
+    '.kk......kk.',
+  ],
+  runner1: [
+    '....kkkk....',
+    '...knnnnk...',
+    '..knnnnnnk..',
+    '..knrnnrnk..',
+    '..knnkknnk..',
+    '...kknnkk...',
+    '.kkkrrrrkkk.',
+    'knnkrrrrknnk',
+    'kk.krrrrk.kk',
+    '...kmmmmk...',
+    '...kmkkmk...',
+    '...kk..kk...',
+  ],
+  brute0: [
+    '...kkkkkk...',
+    '..kGGGGGGk..',
+    '.kGgGGGGgGk.',
+    '.kGrrGGrrGk.',
+    '.kGGkkkkGGk.',
+    'kkkGGGGGGkkk',
+    'kGGkppppkGGk',
+    'kGGkpppppkGk',
+    'kkkkppppkkkk',
+    '..kddkkddk..',
+    '..kddk.kddk.',
+    '..kkkk.kkkk.',
+  ],
+  brute1: [
+    '...kkkkkk...',
+    '..kGGGGGGk..',
+    '.kGgGGGGgGk.',
+    '.kGrrGGrrGk.',
+    '.kGGkkkkGGk.',
+    'kkkGGGGGGkkk',
+    'kGGkppppkGGk',
+    'kGGkpppppkGk',
+    'kkkkppppkkkk',
+    '..kddkkddk..',
+    '.kddk.kddk..',
+    '.kkkk.kkkk..',
+  ],
   tree: [
     '.....kkkkkk.....',
     '...kkllllllkk...',
@@ -374,6 +458,22 @@ export function createSpriteTextures(scene, scale) {
   makeGround(scene, 'ground', 64, 64, scale);
   makeSolid(scene, 'px', 2, 2, '#ffffff');
   makeShadow(scene, 'shadow', 26, 8);
+  makeDarkness(scene, 'darkness', 760, 1320, 120);
+}
+
+// Night overlay: dark everywhere except a soft circle of light in the centre.
+function makeDarkness(scene, key, w, h, radius) {
+  const tex = scene.textures.createCanvas(key, w, h);
+  const ctx = tex.getContext();
+  ctx.fillStyle = 'rgba(8,10,28,0.88)';
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'destination-out';
+  const g = ctx.createRadialGradient(w / 2, h / 2, radius * 0.35, w / 2, h / 2, radius);
+  g.addColorStop(0, 'rgba(0,0,0,1)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  tex.refresh();
 }
 
 export function makeTexture(scene, key, rows, scale) {
