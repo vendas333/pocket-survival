@@ -47,8 +47,7 @@ export class UIScene extends Phaser.Scene {
     this.woodText = pixelText(this, 40, 52, '0', 14).setOrigin(0, 0.5);
     this.add.image(80, 52, 'stone');
     this.stoneText = pixelText(this, 96, 52, '0', 14).setOrigin(0, 0.5);
-    this.add.image(140, 52, 'beam');
-    this.beamText = pixelText(this, 158, 52, '0', 14).setOrigin(0, 0.5);
+    this.beamText = pixelText(this, 158, 52, '', 14).setVisible(false);
     this.waveText = pixelText(this, 222, 52, 'DAY 1', 12, '#a7f070');
     this.scoreText = pixelText(this, 300, 52, '0', 14, '#f4f4f4');
 
@@ -183,7 +182,9 @@ export class UIScene extends Phaser.Scene {
   }
 
   banner(text) {
+    this.currentBanner?.destroy(); // never stack two big banners
     const label = pixelText(this, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 120, text, 30, '#ffcd75').setScale(0.5);
+    this.currentBanner = label;
     this.tweens.add({ targets: label, scale: 1, duration: 250, ease: 'Back.out' });
     this.tweens.add({ targets: label, alpha: 0, delay: 1300, duration: 500, onComplete: () => label.destroy() });
   }
@@ -268,7 +269,7 @@ export class UIScene extends Phaser.Scene {
     const rows = [];
     const refresh = () => {
       const s = this.game_.state;
-      have.setText(`wood ${s.wood}   stone ${s.stone}   beams ${s.beams}`);
+      have.setText(`wood ${s.wood}   stone ${s.stone}`);
       rows.forEach((r) => r.refresh());
     };
     BUILD_ORDER.forEach((id, index) => {

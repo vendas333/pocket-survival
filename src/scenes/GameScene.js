@@ -13,6 +13,7 @@ import { applyDamage, centeredRect, chooseTarget, isFree, separation, shouldChas
 import { pixelText } from '../ui/widgets.js';
 
 const CAMP_HP = 400;
+const STARTER_FENCE_HP = 150;
 
 const NODE_DEFS = {
   tree: { texture: 'tree', depleted: 'stump', hp: 4, gives: 'wood', solid: { w: 16, h: 12, ox: 16, oy: 46 } },
@@ -233,7 +234,7 @@ export class GameScene extends Phaser.Scene {
 
   createPlayer() {
     this.shadow = this.add.image(0, 0, 'shadow');
-    this.player = this.physics.add.sprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2 + 56, 'player0');
+    this.player = this.physics.add.sprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2 + 50, 'player0');
     this.player.setCollideWorldBounds(true);
     this.player.body.setSize(20, 12).setOffset(8, 24);
     this.player.play('player-idle');
@@ -878,7 +879,7 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     if (!wall.active || !enemy.active || this.time.now < (enemy.getData('nextClaw') ?? 0)) return;
     enemy.setData('nextClaw', this.time.now + 1000);
     sfx.chop();
-    this.damageStructure(wall, Math.ceil(enemy.getData('damage') / (wall.getData('camp') ? 3 : 2)));
+    this.damageStructure(wall, Math.ceil(enemy.getData('damage') / 3));
   }
 
   onZombieOnSpikes(enemy, spikes) {
@@ -996,6 +997,9 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     this.lootTarget = null;
     this.lootRing.clear();
     const loot = rollLoot(spot.tier);
+    // No more beams: they come as extra wood
+    loot.wood += loot.beams * 2;
+    loot.beams = 0;
     this.state.wood += loot.wood;
     this.state.stone += loot.stone;
     this.state.beams += loot.beams;
@@ -1055,9 +1059,9 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     const y = WORLD_HEIGHT / 2;
     // Clear anything that spawned on the camp site
     for (const n of this.nodes) {
-      if (Phaser.Math.Distance.Between(n.x, n.y, x, y) < 90 && n.sprite.body) {
+      if (Math.abs(n.x - x) < 160 && Math.abs(n.y - y) < 140) {
         n.depleted = true;
-        n.sprite.body.enable = false;
+        if (n.sprite.body) n.sprite.body.enable = false;
         n.sprite.setVisible(false);
       }
     }
@@ -1066,7 +1070,28 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     this.camp.setData({ id: 'camp', camp: true, hp: maxHp, maxHp, nextHit: 0 }).setDepth(y + 16);
     this.add.image(x, y + 18, 'shadow').setScale(2.4, 1.6).setDepth(y - 1);
     this.nextCampAlert = 0;
+    this.fortifyCamp(x, y);
     this.state.campMaxHp = maxHp;
+  }
+
+  // Free starter palisade around the camp, with a 2-door gate at the bottom
+  fortifyCamp(cx, cy) {
+    const piece = (id, x, y, angle) => {
+      this.buildAngle = angle;
+      const recipe = BUILD_RECIPES[id];
+      const p = this.groupsByKind[recipe.kind].create(x, y, this.structureKey(id));
+      const max = Math.round(STARTER_FENCE_HP * this.meta.structureHpMultiplier); // sturdier than player-built walls
+      p.setData({ id, hp: max, maxHp: max }).setDepth(y + p.height / 2);
+    };
+    for (const dx of [-72, -24, 24, 72]) {
+      piece('wall', cx + dx, cy - 84, 0);
+      piece(Math.abs(dx) < 48 ? 'door' : 'wall', cx + dx, cy + 84, 0);
+    }
+    for (const dy of [-48, 0, 48]) {
+      piece('wall', cx - 105, cy + dy, 90);
+      piece('wall', cx + 105, cy + dy, 90);
+    }
+    this.buildAngle = 0;
   }
 
   onCampHit(hp, destroyed) {

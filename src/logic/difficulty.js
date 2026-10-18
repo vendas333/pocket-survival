@@ -41,11 +41,12 @@ export function getDifficulty(seconds) {
   const t = Math.max(0, seconds);
   const { day, isNight } = getCycle(t);
   const base = {
-    spawnInterval: Math.max(300, Math.round(1300 - t * 4)),
-    spawnBatch: 1 + Math.floor(t / 150),
-    maxEnemies: Math.min(80, 12 + Math.floor(t / 5)),
-    hpMultiplier: 1 + t / 150,
-    speedMultiplier: Math.min(1.6, 1 + t / 400),
+    // A handful of zombies at first, slowly growing each night
+    spawnInterval: Math.max(1400, Math.round(3400 - t * 3)),
+    spawnBatch: 1,
+    maxEnemies: Math.min(20, 4 + Math.floor(t / 30)),
+    hpMultiplier: 1 + t / 200,
+    speedMultiplier: 1,
     level: day,
     isNight,
   };
@@ -54,7 +55,7 @@ export function getDifficulty(seconds) {
   }
   if (isNight) return base;
   // Daytime: a few zombies roam the forest and only chase when they see you
-  return { ...base, spawnInterval: 4000, spawnBatch: 1, maxEnemies: 4 + Math.min(4, day - 1), speedMultiplier: 1 };
+  return { ...base, spawnInterval: 4000, spawnBatch: 1, maxEnemies: 2 + Math.min(3, day - 1), speedMultiplier: 1 };
 }
 
 export function availableEnemyTypes(seconds, isNight = getCycle(seconds).isNight) {

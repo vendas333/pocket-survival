@@ -4,14 +4,14 @@
 
 export const BUILD_RECIPES = {
   beam: { name: 'Beam', desc: 'Saw 2 wood into a beam', icon: 'beam', kind: 'craft', cost: { wood: 2 }, gives: 'beams' },
-  wall: { name: 'Wooden Wall', desc: 'Blocks zombies until broken', icon: 'wall', kind: 'wall', cost: { beams: 4 }, hp: 60 },
+  wall: { name: 'Wooden Wall', desc: 'Blocks zombies until broken', icon: 'wall', kind: 'wall', cost: { wood: 5 }, hp: 60 },
   stoneWall: { name: 'Stone Wall', desc: 'Much tougher than wood', icon: 'stoneWall', kind: 'wall', cost: { stone: 6 }, hp: 160 },
-  door: { name: 'Door', desc: 'You walk through, zombies do not', icon: 'door', kind: 'door', cost: { beams: 5 }, hp: 50 },
-  spikes: { name: 'Spike Trap', desc: 'Hurts zombies that step on it', icon: 'spikes', kind: 'trap', cost: { beams: 3, stone: 2 }, hp: 40 },
+  door: { name: 'Door', desc: 'You walk through, zombies do not', icon: 'door', kind: 'door', cost: { wood: 6 }, hp: 50 },
+  spikes: { name: 'Spike Trap', desc: 'Hurts zombies that step on it', icon: 'spikes', kind: 'trap', cost: { wood: 4, stone: 2 }, hp: 40 },
   campfire: { name: 'Campfire', desc: 'Light at night, slowly heals', icon: 'campfire', kind: 'fire', cost: { wood: 4, stone: 3 }, hp: 30 },
 };
 
-export const BUILD_ORDER = ['beam', 'wall', 'stoneWall', 'door', 'spikes', 'campfire'];
+export const BUILD_ORDER = ['wall', 'door', 'stoneWall', 'spikes', 'campfire'];
 
 export function canPay(resources, cost) {
   return Object.entries(cost).every(([key, amount]) => (resources[key] ?? 0) >= amount);

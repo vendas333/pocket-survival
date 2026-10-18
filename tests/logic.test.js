@@ -87,9 +87,9 @@ describe('difficulty', () => {
 
   it('respects caps', () => {
     const extreme = getDifficulty(CYCLE_SECONDS * 1000 + DAY_SECONDS + 20);
-    expect(extreme.spawnInterval).toBe(300);
-    expect(extreme.maxEnemies).toBe(80);
-    expect(extreme.speedMultiplier).toBe(1.6);
+    expect(extreme.spawnInterval).toBe(1400);
+    expect(extreme.maxEnemies).toBe(20);
+    expect(extreme.speedMultiplier).toBe(1);
   });
 
   it('runners only at night, brutes from day 2', () => {
@@ -143,7 +143,13 @@ describe('upgrades', () => {
 });
 
 describe('building', () => {
-  it('wood becomes beams, beams become a wall', () => {
+  it('walls are paid directly with wood', () => {
+    expect(pay({ wood: 7 }, BUILD_RECIPES.wall.cost)).toEqual({ wood: 2 });
+    expect(pay({ wood: 4 }, BUILD_RECIPES.wall.cost)).toBeNull();
+    expect(BUILD_ORDER).not.toContain('beam');
+  });
+
+  it('beam recipe still converts wood (legacy)', () => {
     let res = { wood: 9, stone: 0, beams: 0 };
     for (let i = 0; i < 4; i++) {
       res = pay(res, BUILD_RECIPES.beam.cost);
@@ -151,15 +157,14 @@ describe('building', () => {
     }
     expect(res).toEqual({ wood: 1, stone: 0, beams: 4 });
     expect(pay(res, BUILD_RECIPES.beam.cost)).toBeNull(); // only 1 wood left
-    const afterWall = pay(res, BUILD_RECIPES.wall.cost);
-    expect(afterWall.beams).toBe(0);
+    expect(pay(res, { beams: 4 }).beams).toBe(0);
     expect(res.beams).toBe(4); // not mutated
   });
 
   it('spikes need beams and stone', () => {
-    expect(canPay({ beams: 3, stone: 1 }, BUILD_RECIPES.spikes.cost)).toBe(false);
-    expect(canPay({ beams: 3, stone: 2 }, BUILD_RECIPES.spikes.cost)).toBe(true);
-    expect(costLabel(BUILD_RECIPES.spikes.cost)).toBe('3 beams  2 stone');
+    expect(canPay({ wood: 4, stone: 1 }, BUILD_RECIPES.spikes.cost)).toBe(false);
+    expect(canPay({ wood: 4, stone: 2 }, BUILD_RECIPES.spikes.cost)).toBe(true);
+    expect(costLabel(BUILD_RECIPES.spikes.cost)).toBe('4 wood  2 stone');
   });
 });
 
