@@ -12,12 +12,14 @@ export class GameOverScene extends Phaser.Scene {
     const cx = GAME_WIDTH / 2;
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x1a1c2c, 0.8).setOrigin(0).setInteractive();
     const g = this.add.graphics();
-    drawPanel(g, 30, 130, GAME_WIDTH - 60, 380);
+    drawPanel(g, 30, 130, GAME_WIDTH - 60, 430);
 
-    pixelText(this, cx, 175, 'GAME OVER', 34, '#b13e53');
+    pixelText(this, cx, 175, 'YOU DIED', 38, '#b13e53');
     const time = `${Math.floor(result.seconds / 60)}:${String(result.seconds % 60).padStart(2, '0')}`;
     pixelText(this, cx, 240, `SURVIVED  ${time}`, 16);
-    pixelText(this, cx, 270, `KILLS  ${result.kills}`, 16);
+    pixelText(this, cx, 265, `KILLS  ${result.kills}`, 16);
+    const soulsLabel = pixelText(this, cx, 392, `+${result.souls ?? 0} SOULS`, 18, '#b13e53');
+    this.tweens.add({ targets: soulsLabel, alpha: 0.5, duration: 500, yoyo: true, repeat: -1 });
     pixelText(this, cx, 315, `SCORE  ${result.score}`, 24, '#ffcd75');
 
     if (result.isNewBest) {
@@ -27,8 +29,9 @@ export class GameOverScene extends Phaser.Scene {
       pixelText(this, cx, 355, `BEST  ${getHighScore()}`, 16, '#94b0c2');
     }
 
-    makeButton(this, cx, 420, 200, 52, 'RESTART', () => this.restart(), { fontSize: 22 });
-    makeButton(this, cx, 480, 200, 40, 'MENU', () => this.toMenu(), { color: 0x3b5dc9, fontSize: 16 });
+    makeButton(this, cx, 440, 200, 50, 'RESTART', () => this.restart(), { fontSize: 22 });
+    makeButton(this, cx, 492, 200, 36, 'SOUL ALTAR', () => { this.scene.stop('Game'); this.scene.start('Meta'); }, { color: 0xb13e53, fontSize: 14 });
+    makeButton(this, cx, 536, 200, 32, 'MENU', () => this.toMenu(), { color: 0x3b5dc9, fontSize: 14 });
 
     this.input.keyboard?.once('keydown-ENTER', () => this.restart());
     this.input.keyboard?.once('keydown-SPACE', () => this.restart());

@@ -22,35 +22,38 @@ export const PALETTE = {
   t: '#8a5a3b', // trunk
   T: '#5a3a28', // dark trunk
   f: '#2d5a3a', // forest shade
+  z: '#9fa98f', // zombie skin (pale, greyish)
+  Z: '#5e6650', // zombie skin shadow / rot
 };
 
 export const SPRITES = {
+  // Weary survivor: messy dark hair, stubble, grim mouth, dirty olive jacket with a blood stain
   player0: [
     '....kkkk....',
-    '...khhhhk...',
-    '..khhhhhhk..',
-    '..kssssssk..',
+    '...kTTTTk...',
+    '..kTTTTTTk..',
+    '..kTssssTk..',
     '..kskssksk..',
-    '..kssssssk..',
-    '...kggggk...',
-    '..kggyyggk..',
-    '..ksggggsk..',
-    '...kbbbbk...',
-    '...kbkkbk...',
+    '..kZskksZk..',
+    '...kffffk...',
+    '..kffTrffk..',
+    '..ksfTfffk..',
+    '...kddddk...',
+    '...kdkkdk...',
     '...kk..kk...',
   ],
   player1: [
     '....kkkk....',
-    '...khhhhk...',
-    '..khhhhhhk..',
-    '..kssssssk..',
+    '...kTTTTk...',
+    '..kTTTTTTk..',
+    '..kTssssTk..',
     '..kskssksk..',
-    '..kssssssk..',
-    '...kggggk...',
-    '..kggyyggk..',
-    '..ksggggsk..',
-    '...kbbbbk...',
-    '..kbk..kbk..',
+    '..kZskksZk..',
+    '...kffffk...',
+    '..kffTrffk..',
+    '..ksfTfffk..',
+    '...kddddk...',
+    '..kdk..kdk..',
     '..kk....kk..',
   ],
   slime0: [
@@ -165,88 +168,89 @@ export const SPRITES = {
     '.kmmk.kmmk..',
     '.kkkk.kkkk..',
   ],
+  // Zombies: human silhouettes with pale, rotting skin (z/Z), torn bloody clothes, arms reaching out
   zombie0: [
     '....kkkk....',
-    '...kggggk...',
-    '..kgGgggGk..',
-    '..kgrggrgk..',
-    '..kggggggk..',
-    '..kkgkkgkk..',
-    'kkkbbbbbbkkk',
-    'kggbbmbbbggk',
-    'kk.kbbbbk.kk',
-    '...kddddk...',
-    '...kdkkdk...',
+    '...khhhhk...',
+    '..khzzzhhk..',
+    '..kzzzzzzk..',
+    '..kZkzzkZk..',
+    '..kzzrrzzk..',
+    'kkkkwwwwkkkk',
+    'kzzwwrwwwzzk',
+    'kkkwwwrwwkkk',
+    '...kbbbbk...',
+    '...kbkkbk...',
     '...kk..kk...',
   ],
   zombie1: [
     '....kkkk....',
-    '...kggggk...',
-    '..kgGgggGk..',
-    '..kgrggrgk..',
-    '..kggggggk..',
-    '..kkgkkgkk..',
-    'kkkbbbbbbkkk',
-    'kggbbmbbbggk',
-    'kk.kbbbbk.kk',
-    '...kddddk...',
-    '..kdk..kdk..',
+    '...khhhhk...',
+    '..khzzzhhk..',
+    '..kzzzzzzk..',
+    '..kZkzzkZk..',
+    '..kzzrrzzk..',
+    'kkkkwwwwkkkk',
+    'kzzwwrwwwzzk',
+    'kkkwwwrwwkkk',
+    '...kbbbbk...',
+    '..kbk..kbk..',
     '..kk....kk..',
   ],
   runner0: [
     '....kkkk....',
-    '...knnnnk...',
-    '..knnnnnnk..',
-    '..knrnnrnk..',
-    '..knnkknnk..',
-    '...kknnkk...',
-    '.kkkrrrrkkk.',
-    'knnkrrrrknnk',
-    'kk.krrrrk.kk',
+    '...kzzzzk...',
+    '..kzzZzzzk..',
+    '..kzzzzzzk..',
+    '..kZkzzkZk..',
+    '..kzzkkzzk..',
+    'kkkkrrrrkkkk',
+    'kzzrrorrrzzk',
+    'kkkrrrrrrkkk',
     '...kmmmmk...',
     '..kmk..kmk..',
     '.kk......kk.',
   ],
   runner1: [
     '....kkkk....',
-    '...knnnnk...',
-    '..knnnnnnk..',
-    '..knrnnrnk..',
-    '..knnkknnk..',
-    '...kknnkk...',
-    '.kkkrrrrkkk.',
-    'knnkrrrrknnk',
-    'kk.krrrrk.kk',
+    '...kzzzzk...',
+    '..kzzZzzzk..',
+    '..kzzzzzzk..',
+    '..kZkzzkZk..',
+    '..kzzkkzzk..',
+    'kkkkrrrrkkkk',
+    'kzzrrorrrzzk',
+    'kkkrrrrrrkkk',
     '...kmmmmk...',
     '...kmkkmk...',
     '...kk..kk...',
   ],
   brute0: [
     '...kkkkkk...',
-    '..kGGGGGGk..',
-    '.kGgGGGGgGk.',
-    '.kGrrGGrrGk.',
-    '.kGGkkkkGGk.',
-    'kkkGGGGGGkkk',
-    'kGGkppppkGGk',
-    'kGGkpppppkGk',
-    'kkkkppppkkkk',
-    '..kddkkddk..',
-    '..kddk.kddk.',
+    '..kzzzzzzk..',
+    '.kzzZzzzZzk.',
+    '.kzkkzzkkzk.',
+    '.kzzzrrzzzk.',
+    'kkkzzzzzzkkk',
+    'kzzkddddkzzk',
+    'kzzkdrdddkzk',
+    'kkkkddddkkkk',
+    '..kbbkkbbk..',
+    '..kbbk.kbbk.',
     '..kkkk.kkkk.',
   ],
   brute1: [
     '...kkkkkk...',
-    '..kGGGGGGk..',
-    '.kGgGGGGgGk.',
-    '.kGrrGGrrGk.',
-    '.kGGkkkkGGk.',
-    'kkkGGGGGGkkk',
-    'kGGkppppkGGk',
-    'kGGkpppppkGk',
-    'kkkkppppkkkk',
-    '..kddkkddk..',
-    '.kddk.kddk..',
+    '..kzzzzzzk..',
+    '.kzzZzzzZzk.',
+    '.kzkkzzkkzk.',
+    '.kzzzrrzzzk.',
+    'kkkzzzzzzkkk',
+    'kzzkddddkzzk',
+    'kzzkdrdddkzk',
+    'kkkkddddkkkk',
+    '..kbbkkbbk..',
+    '.kbbk.kbbk..',
     '.kkkk.kkkk..',
   ],
   tree: [
@@ -445,8 +449,148 @@ export const SPRITES = {
     '.g.',
   ],
   tuft: [
-    'g.g.g',
-    'gGgGg',
+    'f.f.f',
+    'fTfTf',
+  ],
+  beam: [
+    'kkkkkkk',
+    'kyttttk',
+    'ktTtTtk',
+    'kkkkkkk',
+  ],
+  // Plank wall seen from above (horizontal); rotated 90º in game for vertical
+  wall: [
+    'kkkkkkkkkkkkkkkk',
+    'kttTttTttTttTttk',
+    'kTtttTtttTtttTtk',
+    'kkkkkkkkkkkkkkkk',
+    'kttTttTttTttTttk',
+    'kkkkkkkkkkkkkkkk',
+  ],
+  crate: [
+    'kkkkkkkkkk',
+    'ktTttttTtk',
+    'kTkkwwkkTk',
+    'ktkwrrwktk',
+    'ktkrrrrktk',
+    'ktkwrrwktk',
+    'kTkkwwkkTk',
+    'ktTttttTtk',
+    'kkkkkkkkkk',
+  ],
+  crateOpen: [
+    '..........',
+    '..........',
+    'kkkkkkkkkk',
+    'kT......Tk',
+    'kt.kkkk.tk',
+    'kt......tk',
+    'kTTttttTTk',
+    'ktTttttTtk',
+    'kkkkkkkkkk',
+  ],
+  car: [
+    '....kkkkkkkk....',
+    '...knnkkknnnk...',
+    '..kncckmmkccnk..',
+    'kkkrrrrrrrrrrkkk',
+    'kroorrrTrrrroork',
+    'krrrrrTrrrrrrrrk',
+    'kTkkkTrrrrTkkkTk',
+    'kkdmdkkkkkkdmdkk',
+    '..kdk......kdk..',
+  ],
+  carLooted: [
+    '....kkkkkkkk....',
+    '...kkkkkkkkkk...',
+    '..kkkkkmmkkkkk..',
+    'kkkTTTTTTTTTTkkk',
+    'kTTTTTTkTTTTTTTk',
+    'kTTTTTkTTTTTTTTk',
+    'kdkkkdTTTTdkkkdk',
+    'kkdmdkkkkkkdmdkk',
+    '..kdk......kdk..',
+  ],
+  arrow: [
+    '....k....',
+    '...kyk...',
+    '..kyyyk..',
+    '.kyyyyyk.',
+    'kkkyyykkk',
+    '...kyk...',
+    '...kkk...',
+  ],
+  stoneWall: [
+    'kkkkkkkkkkkkkkkk',
+    'knnmknnnmknnmnnk',
+    'kmmdkmmmdkmmdmmk',
+    'kkkkkkkkkkkkkkkk',
+    'knmnnknmnnknmnnk',
+    'kkkkkkkkkkkkkkkk',
+  ],
+  door: [
+    'kkkkkkkkkkkkkkkk',
+    'kTTkyttttttykTTk',
+    'kTTktttTtytTkTTk',
+    'kTTkyttttttykTTk',
+    'kTTktTttttTtkTTk',
+    'kkkkkkkkkkkkkkkk',
+  ],
+  campfire: [
+    '...k.k..',
+    '..kyky..',
+    '.kyoyok.',
+    '.koyooyk',
+    'kroooork',
+    'kTTkkTTk',
+    'kmTTTTmk',
+    '.kkkkkk.',
+  ],
+  spikes: [
+    '.k...k...k.',
+    'knk.knk.knk',
+    'knk.knk.knk',
+    'ktk.ktk.ktk',
+    'kkkkkkkkkkk',
+    'kTTTTTTTTTk',
+    'kkkkkkkkkkk',
+  ],
+  skull: [
+    '.kkkk.',
+    'kwwwwk',
+    'kwkkwk',
+    'kwwwwk',
+    '.kwwk.',
+    '.kkkk.',
+  ],
+  bones: [
+    'kk.....kk',
+    'kwk...kwk',
+    '.kwk.kwk.',
+    '..kwkwk..',
+    '.kwk.kwk.',
+    'kwk...kwk',
+    'kk.....kk',
+  ],
+  grave: [
+    '...kkk...',
+    '...knk...',
+    '.kkknkkk.',
+    '.knnnnnk.',
+    '.kkknkkk.',
+    '...knk...',
+    '...knk...',
+    '.kkTTTkk.',
+    'kTTTTTTTk',
+  ],
+  blood: [
+    '...r....r...',
+    '..rrr..rr...',
+    '.rrrrrrrrr..',
+    'rrrprrrrrrr.',
+    '.rrrrrprrr..',
+    '..rr.rrrr.r.',
+    '.r....rr....',
   ],
 };
 
@@ -455,17 +599,59 @@ export function createSpriteTextures(scene, scale) {
   for (const [key, rows] of Object.entries(SPRITES)) {
     makeTexture(scene, key, rows, scale);
   }
+  // Vertical versions of rotatable structures (real textures, so physics bodies match exactly)
+  for (const key of ['wall', 'stoneWall', 'door', 'spikes']) makeRotated(scene, key);
   makeGround(scene, 'ground', 64, 64, scale);
   makeSolid(scene, 'px', 2, 2, '#ffffff');
   makeShadow(scene, 'shadow', 26, 8);
   makeDarkness(scene, 'darkness', 760, 1320, 120);
+  makeLight(scene, 'light', 120);
+  makeSolid(scene, 'rain', 1, 8, '#9fb4c8');
+  makeFog(scene, 'fog', 192);
+}
+
+// Soft, tileable fog blobs
+function makeFog(scene, key, size) {
+  const tex = scene.textures.createCanvas(key, size, size);
+  const ctx = tex.getContext();
+  let seed = 7;
+  const rand = () => {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+  for (let i = 0; i < 18; i++) {
+    const x = rand() * size;
+    const y = rand() * size;
+    const r = 20 + rand() * 40;
+    for (const [ox, oy] of [[0, 0], [size, 0], [-size, 0], [0, size], [0, -size]]) {
+      const g = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+      g.addColorStop(0, 'rgba(200,205,215,0.5)');
+      g.addColorStop(1, 'rgba(200,205,215,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+    }
+  }
+  tex.refresh();
+}
+
+// Soft white circle, erased out of the night overlay around the player and campfires.
+function makeLight(scene, key, radius) {
+  const size = radius * 2;
+  const tex = scene.textures.createCanvas(key, size, size);
+  const ctx = tex.getContext();
+  const g = ctx.createRadialGradient(radius, radius, radius * 0.35, radius, radius, radius);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  tex.refresh();
 }
 
 // Night overlay: dark everywhere except a soft circle of light in the centre.
 function makeDarkness(scene, key, w, h, radius) {
   const tex = scene.textures.createCanvas(key, w, h);
   const ctx = tex.getContext();
-  ctx.fillStyle = 'rgba(8,10,28,0.88)';
+  ctx.fillStyle = 'rgba(14,6,10,0.9)';
   ctx.fillRect(0, 0, w, h);
   ctx.globalCompositeOperation = 'destination-out';
   const g = ctx.createRadialGradient(w / 2, h / 2, radius * 0.35, w / 2, h / 2, radius);
@@ -490,6 +676,16 @@ export function makeTexture(scene, key, rows, scale) {
       ctx.fillRect(x * scale, y * scale, scale, scale);
     }
   }
+  tex.refresh();
+}
+
+function makeRotated(scene, key) {
+  const src = scene.textures.get(key).getSourceImage();
+  const tex = scene.textures.createCanvas(`${key}_v`, src.height, src.width);
+  const ctx = tex.getContext();
+  ctx.translate(src.height, 0);
+  ctx.rotate(Math.PI / 2);
+  ctx.drawImage(src, 0, 0);
   tex.refresh();
 }
 
@@ -520,7 +716,8 @@ function makeGround(scene, key, cols, rows, scale) {
     seed = (seed * 16807) % 2147483647;
     return (seed - 1) / 2147483646;
   };
-  const shades = ['#3e8948', '#3e8948', '#3e8948', '#438f4c', '#367d40', '#4a9a52'];
+  // Dead, muddy grass
+  const shades = ['#3d4230', '#3d4230', '#3a3d2c', '#44482f', '#33372a', '#4a4733'];
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       ctx.fillStyle = shades[Math.floor(rand() * shades.length)];
@@ -531,7 +728,7 @@ function makeGround(scene, key, cols, rows, scale) {
   for (let i = 0; i < 40; i++) {
     const x = Math.floor(rand() * cols);
     const y = Math.floor(rand() * (rows - 1));
-    ctx.fillStyle = '#2d6b38';
+    ctx.fillStyle = '#2a2c22';
     ctx.fillRect(x * scale, y * scale, scale, scale * 2);
   }
   tex.refresh();

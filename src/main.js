@@ -6,6 +6,7 @@ import { BootScene } from './scenes/BootScene.js';
 import { GameOverScene } from './scenes/GameOverScene.js';
 import { GameScene } from './scenes/GameScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
+import { MetaScene } from './scenes/MetaScene.js';
 import { UIScene } from './scenes/UIScene.js';
 
 initPWA();
@@ -27,7 +28,7 @@ const game = new Phaser.Game({
     arcade: { debug: false },
   },
   input: { activePointers: 3 },
-  scene: [BootScene, MenuScene, GameScene, UIScene, GameOverScene],
+  scene: [BootScene, MenuScene, MetaScene, GameScene, UIScene, GameOverScene],
 });
 
 // Handy for debugging in the browser console.

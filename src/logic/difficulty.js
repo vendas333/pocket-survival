@@ -7,7 +7,7 @@ export const CYCLE_SECONDS = DAY_SECONDS + NIGHT_SECONDS;
 const FADE_SECONDS = 6;
 
 export const ENEMY_TYPES = {
-  zombie: { hp: 3, speed: 34, damage: 10, score: 10, unlockAt: 0, weight: 6 },
+  zombie: { hp: 3, speed: 50, damage: 10, score: 10, unlockAt: 0, weight: 6 },
   runner: { hp: 2, speed: 74, damage: 7, score: 15, unlockAt: 0, weight: 3, nightOnly: true },
   brute: { hp: 18, speed: 28, damage: 25, score: 60, unlockAt: CYCLE_SECONDS, weight: 1 },
 };
@@ -20,7 +20,21 @@ export function getCycle(seconds) {
   const darkness = isNight
     ? Math.min(1, (phase - DAY_SECONDS) / FADE_SECONDS, (CYCLE_SECONDS - phase) / FADE_SECONDS)
     : 0;
-  return { day: Math.floor(t / CYCLE_SECONDS) + 1, isNight, darkness };
+  const day = Math.floor(t / CYCLE_SECONDS) + 1;
+  return {
+    day,
+    isNight,
+    darkness,
+    // 0..1 through the current phase (for the HUD clock)
+    progress: isNight ? (phase - DAY_SECONDS) / NIGHT_SECONDS : phase / DAY_SECONDS,
+    untilNight: isNight ? 0 : DAY_SECONDS - phase,
+    bloodMoon: isNight && isBloodMoon(day),
+  };
+}
+
+// Every 3rd night the moon turns red: bigger, tougher hordes
+export function isBloodMoon(day) {
+  return day % 3 === 0;
 }
 
 export function getDifficulty(seconds) {
@@ -35,15 +49,12 @@ export function getDifficulty(seconds) {
     level: day,
     isNight,
   };
+  if (isNight && isBloodMoon(day)) {
+    return { ...base, spawnInterval: Math.round(base.spawnInterval * 0.6), maxEnemies: Math.round(base.maxEnemies * 1.5), bloodMoon: true };
+  }
   if (isNight) return base;
-  // Daytime: quiet scavenging
-  return {
-    ...base,
-    spawnInterval: base.spawnInterval * 3,
-    spawnBatch: 1,
-    maxEnemies: Math.max(4, Math.floor(base.maxEnemies * 0.3)),
-    speedMultiplier: base.speedMultiplier * 0.85,
-  };
+  // Daytime: a few zombies roam the forest and only chase when they see you
+  return { ...base, spawnInterval: 4000, spawnBatch: 1, maxEnemies: 4 + Math.min(4, day - 1), speedMultiplier: 1 };
 }
 
 export function availableEnemyTypes(seconds, isNight = getCycle(seconds).isNight) {

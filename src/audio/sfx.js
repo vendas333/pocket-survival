@@ -89,6 +89,24 @@ export const sfx = {
     [523, 659, 784, 1046].forEach((f, i) => tone({ freq: f, dur: 0.09, vol: 0.15, delay: i * 0.07 }));
   },
   click: () => tone({ freq: 600, dur: 0.04, vol: 0.1 }),
+  build: () => {
+    noise({ dur: 0.06, vol: 0.2 });
+    tone({ freq: 140, to: 90, dur: 0.12, type: 'square', vol: 0.15, delay: 0.03 });
+  },
+  breakWall: () => {
+    noise({ dur: 0.3, vol: 0.3 });
+    tone({ freq: 120, to: 40, dur: 0.35, type: 'sawtooth', vol: 0.18 });
+  },
+  // Low, wobbling zombie groan
+  groan: () => {
+    const f = 70 + Math.random() * 40;
+    tone({ freq: f, to: f * 0.7, dur: 0.6, type: 'sawtooth', vol: 0.07 });
+    tone({ freq: f * 1.5, to: f, dur: 0.5, type: 'triangle', vol: 0.05, delay: 0.05 });
+  },
+  // Heartbeat-like warning before nightfall
+  warning: () => {
+    [0, 0.25, 0.8, 1.05].forEach((d) => tone({ freq: 60, to: 40, dur: 0.15, type: 'sine', vol: 0.4, delay: d }));
+  },
   wave: () => tone({ freq: 196, to: 392, dur: 0.3, type: 'triangle', vol: 0.18 }),
   gameOver: () => {
     [392, 330, 262, 196].forEach((f, i) => tone({ freq: f, dur: 0.22, type: 'triangle', vol: 0.22, delay: i * 0.18 }));
