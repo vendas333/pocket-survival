@@ -7,7 +7,7 @@ import { submitScore } from '../logic/storage.js';
 import { addXp, cardModifiers, CARDS, XP_PER_KILL } from '../logic/cards.js';
 import { crateTier, LOOT, lootLabel, rollLoot } from '../logic/loot.js';
 import { addSouls, computeSouls, loadMeta, metaModifiers, saveMeta } from '../logic/meta.js';
-import { BUILD_RECIPES, pay } from '../logic/building.js';
+import { BUILD_RECIPES, canUpgradeWall, pay, repairTick, WALL_CARE } from '../logic/building.js';
 import { eat, HUNGER, tickHunger } from '../logic/survival.js';
 import { applyDamage, centeredRect, chooseTarget, isFree, separation, shouldChase, snap, validatePlacement } from '../logic/placement.js';
 import { pixelText } from '../ui/widgets.js';
@@ -325,6 +325,7 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
     this.updateHarvest(dt);
     this.updatePickups();
     this.updateLoot(dt);
+    this.updateWallCare(dt);
   }
 
   updatePlayer() {
@@ -1107,6 +1108,99 @@ NIGHT ${cycle.day}` : `NIGHT ${cycle.day}\nTHE DEAD RISE`);
       this.ui()?.toast('CAMP UNDER ATTACK!');
       sfx.warning();
     }
+  }
+
+  // Wall care: touch a wall -> wood repairs it, stone upgrades wood to stone --------
+  updateWallCare(dt) {
+    if (!this.careRing) this.careRing = this.add.graphics().setDepth(7000);
+    this.careRing.clear();
+    this.careTimer = (this.careTimer ?? 0) - dt;
+    const pb = this.player.body;
+    const reach = new Phaser.Geom.Rectangle(pb.x - 6, pb.y - 6, pb.width + 12, pb.height + 12);
+    let target = null;
+    for (const s of [...this.walls.getChildren(), ...this.doors.getChildren()]) {
+      if (!s.active || s.getData('camp')) continue;
+      const r = new Phaser.Geom.Rectangle(s.body.x, s.body.y, s.body.width, s.body.height);
+      if (Phaser.Geom.Intersects.RectangleToRectangle(reach, r)) {
+        target = s;
+        break;
+      }
+    }
+    if (target !== this.careTarget) {
+      this.careTarget = target;
+      this.upgradeProgress = 0;
+    }
+    if (!target) return;
+    const hp = target.getData('hp');
+    const max = target.getData('maxHp');
+    if (hp < max) {
+      if (this.careTimer > 0) return;
+      const r = repairTick(hp, max, this.state.wood);
+      if (r.repaired) {
+        this.careTimer = WALL_CARE.repairEveryMs;
+        this.state.wood = r.wood;
+        target.setData('hp', r.hp);
+        this.drawStructureBar(target);
+        this.floatText(target.x, target.y - 14, `+${WALL_CARE.repairPerWood}`, '#a7f070');
+        this.burst('wood', target.x, target.y, 3);
+        sfx.chop();
+      } else {
+        this.careTimer = 2000;
+        this.floatText(this.player.x, this.player.y - 30, 'Need wood to repair', '#ff6b6b');
+      }
+      return;
+    }
+    if (target.getData('id') !== 'wall') return;
+    if (!canUpgradeWall('wall', hp, max, this.state.stone)) {
+      if (this.careTimer <= 0) {
+        this.careTimer = 2500;
+        this.floatText(this.player.x, this.player.y - 30, `${WALL_CARE.upgradeCost} stone = stone wall`, '#94b0c2');
+      }
+      return;
+    }
+    this.upgradeProgress += dt;
+    const p = Math.min(1, this.upgradeProgress / WALL_CARE.upgradeMs);
+    this.careRing.lineStyle(5, 0x1a1c2c, 0.8).strokeCircle(target.x, target.y - 20, 10);
+    this.careRing.lineStyle(3, 0x94b0c2, 1).beginPath();
+    this.careRing.arc(target.x, target.y - 20, 10, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2);
+    this.careRing.strokePath();
+    if (p >= 1) this.upgradeWall(target);
+  }
+
+  upgradeWall(wall) {
+    this.state.stone -= WALL_CARE.upgradeCost;
+    const vertical = wall.texture.key.endsWith('_v');
+    wall.setTexture(vertical ? 'stoneWall_v' : 'stoneWall');
+    const max = Math.round(BUILD_RECIPES.stoneWall.hp * this.meta.structureHpMultiplier * this.cardMods.structureHpMultiplier);
+    wall.setData({ id: 'stoneWall', hp: max, maxHp: max });
+    wall.getData('bar')?.destroy();
+    wall.setData('bar', null);
+    this.upgradeProgress = 0;
+    this.burst('stone', wall.x, wall.y, 14);
+    this.cameras.main.shake(80, 0.004);
+    this.floatText(wall.x, wall.y - 16, 'STONE WALL!', '#d9d0c1');
+    sfx.build();
+  }
+
+  // Health bar above a structure (hidden when full)
+  drawStructureBar(piece) {
+    const hp = piece.getData('hp');
+    const maxHp = piece.getData('maxHp');
+    let bar = piece.getData('bar');
+    if (hp >= maxHp) {
+      bar?.destroy();
+      piece.setData('bar', null);
+      return;
+    }
+    if (!bar) {
+      bar = this.add.graphics().setDepth(8000);
+      piece.setData('bar', bar);
+    }
+    const ratio = hp / maxHp;
+    const w = Math.max(24, Math.min(piece.width, 40));
+    bar.clear();
+    bar.fillStyle(0x1a1c2c, 0.9).fillRect(piece.x - w / 2 - 1, piece.y - piece.height / 2 - 9, w + 2, 6);
+    bar.fillStyle(ratio > 0.5 ? 0x38b764 : ratio > 0.25 ? 0xffcd75 : 0xb13e53, 1).fillRect(piece.x - w / 2, piece.y - piece.height / 2 - 8, w * ratio, 4);
   }
 
   // Permanent upgrades bought with souls in the menu

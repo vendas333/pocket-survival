@@ -19,7 +19,7 @@ import {
   UPGRADES,
 } from '../src/logic/upgrades.js';
 import { getHighScore, getMuted, setMuted, submitScore } from '../src/logic/storage.js';
-import { BUILD_ORDER, BUILD_RECIPES, canPay, costLabel, pay } from '../src/logic/building.js';
+import { BUILD_ORDER, BUILD_RECIPES, canPay, canUpgradeWall, costLabel, pay, repairTick } from '../src/logic/building.js';
 import { eat, HUNGER, tickHunger } from '../src/logic/survival.js';
 import { addXp, availableCards, cardModifiers, CARDS, rollCards, xpToNext } from '../src/logic/cards.js';
 import { crateTier, lootLabel, rollLoot } from '../src/logic/loot.js';
@@ -146,7 +146,7 @@ describe('building', () => {
   it('walls are paid directly with wood', () => {
     expect(pay({ wood: 7 }, BUILD_RECIPES.wall.cost)).toEqual({ wood: 2 });
     expect(pay({ wood: 4 }, BUILD_RECIPES.wall.cost)).toBeNull();
-    expect(BUILD_ORDER).not.toContain('beam');
+    expect(BUILD_ORDER).toEqual(['spikes', 'campfire']);
   });
 
   it('beam recipe still converts wood (legacy)', () => {
@@ -165,6 +165,23 @@ describe('building', () => {
     expect(canPay({ wood: 4, stone: 1 }, BUILD_RECIPES.spikes.cost)).toBe(false);
     expect(canPay({ wood: 4, stone: 2 }, BUILD_RECIPES.spikes.cost)).toBe(true);
     expect(costLabel(BUILD_RECIPES.spikes.cost)).toBe('4 wood  2 stone');
+  });
+});
+
+describe('wall care (repair & upgrade)', () => {
+  it('wood repairs a damaged wall, one wood per tick', () => {
+    expect(repairTick(30, 60, 5)).toEqual({ hp: 42, wood: 4, repaired: true });
+    expect(repairTick(55, 60, 5)).toEqual({ hp: 60, wood: 4, repaired: true });
+    expect(repairTick(60, 60, 5)).toEqual({ hp: 60, wood: 5, repaired: false });
+    expect(repairTick(30, 60, 0).repaired).toBe(false);
+  });
+
+  it('stone upgrades only healthy wooden walls', () => {
+    expect(canUpgradeWall('wall', 60, 60, 4)).toBe(true);
+    expect(canUpgradeWall('wall', 50, 60, 9)).toBe(false); // repair first
+    expect(canUpgradeWall('wall', 60, 60, 3)).toBe(false);
+    expect(canUpgradeWall('stoneWall', 160, 160, 9)).toBe(false);
+    expect(canUpgradeWall('door', 50, 50, 9)).toBe(false);
   });
 });
 
